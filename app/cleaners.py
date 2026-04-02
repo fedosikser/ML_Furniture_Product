@@ -17,6 +17,26 @@ STOP_WORDS = {
     "furniture",
     "store",
     "gift card",
+    "trade program",
+    "trade designer program",
+    "trade & designer program",
+    "order swatches",
+    "free swatches",
+    "customizer",
+    "contact us",
+    "contact",
+    "resources",
+    "our story",
+    "our furniture",
+    "reviews testimonials",
+    "reviews & testimonials",
+    "quick ship",
+    "quick ship products",
+    "furniture stylist",
+    "the company",
+    "product details",
+    "why we love this",
+    "let us help you",
 }
 
 NOISE_PATTERNS = (
@@ -50,6 +70,8 @@ def looks_like_product_name(value: str) -> bool:
         return False
     if len(key.split()) == 1 and key in STOP_WORDS:
         return False
+    if key in STOP_WORDS:
+        return False
     if sum(char.isalpha() for char in text) < 3:
         return False
     if sum(char in "!@#$%^&*_=+[]{}" for char in text) > 4:
@@ -73,4 +95,3 @@ def clean_candidates(values: list[str]) -> list[str]:
     return unique_preserve_order(
         [value for value in values if looks_like_product_name(value)]
     )
-

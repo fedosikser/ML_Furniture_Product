@@ -6,7 +6,7 @@ from collections import defaultdict
 import httpx
 
 from app.classifiers import classify_page
-from app.cleaners import clean_candidates
+from app.cleaners import canonical_key, clean_candidates
 from app.parser import PageFetcher, parse_html
 from app.schemas import ExtractResponse, ParsedPage
 from app.utils import is_valid_http_url
@@ -86,6 +86,13 @@ def rank_candidates(page: ParsedPage) -> tuple[list[str], list[str]]:
     scores: dict[str, int] = defaultdict(int)
     candidate_sources: dict[str, set[str]] = defaultdict(set)
     original_names: dict[str, str] = {}
+    context_text = " | ".join(
+        [
+            page.title or "",
+            page.og_title or "",
+            *page.json_ld_products,
+        ]
+    ).casefold()
 
     groups = {
         "json_ld": page.json_ld_products,
@@ -99,16 +106,24 @@ def rank_candidates(page: ParsedPage) -> tuple[list[str], list[str]]:
 
     for source, values in groups.items():
         for value in clean_candidates(values):
-            key = value.casefold()
+            key = canonical_key(value)
             original_names[key] = value
             scores[key] += SOURCE_WEIGHTS[source]
             candidate_sources[key].add(source)
+
+    for key, value in original_names.items():
+        lowered = value.casefold()
+        if lowered and lowered in context_text:
+            scores[key] += 25
+        if len(candidate_sources[key]) >= 2:
+            scores[key] += 20
 
     ranked = sorted(
         scores.items(),
         key=lambda item: (
             -item[1],
-            len(original_names[item[0]]),
+            -len(candidate_sources[item[0]]),
+            -len(original_names[item[0]]),
             original_names[item[0]].casefold(),
         ),
     )

@@ -36,6 +36,27 @@ LISTING_HTML = """
 """
 
 
+MULTI_H1_PRODUCT_HTML = """
+<html>
+  <head>
+    <title>Kaiser Box Bed - Blush Plush Velvet - Tandem Arbor</title>
+  </head>
+  <body>
+    <header>
+      <h1>Customizer</h1>
+      <h1>Order Swatches</h1>
+      <h1>Trade Program</h1>
+    </header>
+    <main>
+      <h1>Kaiser Box Bed</h1>
+      <span>$3,620</span>
+      <button>Add To Cart</button>
+    </main>
+  </body>
+</html>
+"""
+
+
 def test_extract_from_product_html() -> None:
     extractor = ProductExtractor()
     result = extractor.extract_from_html("https://example.com/item", "https://example.com/item", PRODUCT_HTML)
@@ -54,3 +75,13 @@ def test_extract_from_listing_html() -> None:
     assert result.status == "ok"
     assert result.page_type == "listing_page"
     assert "Scandinavian Chair" in result.products
+
+
+def test_prefers_product_title_over_header_marketing_h1() -> None:
+    extractor = ProductExtractor()
+    result = extractor.extract_from_html(
+        "https://example.com/bed",
+        "https://example.com/bed",
+        MULTI_H1_PRODUCT_HTML,
+    )
+    assert result.top_product == "Kaiser Box Bed"

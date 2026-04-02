@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from app.cleaners import clean_candidates, normalize_text
 from app.schemas import FetchResult, ParsedPage
@@ -23,6 +24,10 @@ PRODUCT_CARD_SELECTORS = (
 PRICE_PATTERN = re.compile(r"[$€£]\s?\d")
 SKU_PATTERN = re.compile(r"\bsku\b", re.I)
 ADD_TO_CART_PATTERN = re.compile(r"add to cart|buy now", re.I)
+IGNORED_CONTAINER_PATTERN = re.compile(
+    r"(header|footer|nav|menu|drawer|modal|popup|newsletter|breadcrumbs?|toolbar)",
+    re.I,
+)
 
 
 class PageFetcher:
@@ -59,6 +64,25 @@ def _collect_json_ld_names(payload: Any) -> list[str]:
     return names
 
 
+def _is_in_ignored_container(node: Tag) -> bool:
+    for parent in [node, *node.parents]:
+        if not isinstance(parent, Tag):
+            continue
+        if parent.name in {"header", "footer", "nav", "aside"}:
+            return True
+        attrs = " ".join(
+            [
+                parent.get("id", ""),
+                " ".join(parent.get("class", [])),
+                parent.get("role", ""),
+                parent.get("aria-label", ""),
+            ]
+        )
+        if IGNORED_CONTAINER_PATTERN.search(attrs):
+            return True
+    return False
+
+
 def parse_html(url: str, final_url: str, html: str) -> ParsedPage:
     soup = BeautifulSoup(html, "lxml")
 
@@ -66,11 +90,18 @@ def parse_html(url: str, final_url: str, html: str) -> ParsedPage:
     og_title_node = soup.find("meta", attrs={"property": "og:title"})
     og_title = normalize_text(og_title_node.get("content", "")) if og_title_node else None
 
-    h1 = clean_candidates([node.get_text(" ", strip=True) for node in soup.find_all("h1")])
+    h1 = clean_candidates(
+        [
+            node.get_text(" ", strip=True)
+            for node in soup.find_all("h1")
+            if not _is_in_ignored_container(node)
+        ]
+    )
     breadcrumbs = clean_candidates(
         [
             node.get_text(" ", strip=True)
             for node in soup.select("[aria-label*='breadcrumb' i] a, nav.breadcrumb a, .breadcrumb a")
+            if not _is_in_ignored_container(node)
         ]
     )
 
@@ -89,6 +120,8 @@ def parse_html(url: str, final_url: str, html: str) -> ParsedPage:
     product_cards: list[str] = []
     for selector in PRODUCT_CARD_SELECTORS:
         for node in soup.select(selector):
+            if _is_in_ignored_container(node):
+                continue
             text = node.get("data-product-title") or node.get_text(" ", strip=True)
             if text:
                 product_cards.append(text)
@@ -118,4 +151,3 @@ def parse_html(url: str, final_url: str, html: str) -> ParsedPage:
         add_to_cart_detected=bool(ADD_TO_CART_PATTERN.search(raw_text)),
         sku_detected=bool(SKU_PATTERN.search(raw_text)),
     )
-
