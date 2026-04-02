@@ -10,7 +10,6 @@ from bs4.element import Tag
 
 from app.cleaners import clean_candidates, normalize_text
 from app.schemas import FetchResult, ParsedPage
-from app.utils import build_user_agent
 
 
 PRODUCT_CARD_SELECTORS = (
@@ -28,11 +27,15 @@ IGNORED_CONTAINER_PATTERN = re.compile(
     r"(header|footer|nav|menu|drawer|modal|popup|newsletter|breadcrumbs?|toolbar)",
     re.I,
 )
+USER_AGENT = (
+    "Mozilla/5.0 (compatible; FurnitureExtractorBot/1.0; "
+    "+https://example.local/extractor)"
+)
 
 
 class PageFetcher:
     async def fetch(self, url: str) -> FetchResult:
-        headers = {"User-Agent": build_user_agent()}
+        headers = {"User-Agent": USER_AGENT}
         timeout = httpx.Timeout(12.0, connect=6.0)
         async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=timeout) as client:
             response = await client.get(url)
@@ -43,7 +46,6 @@ class PageFetcher:
             return FetchResult(
                 url=url,
                 final_url=str(response.url),
-                status_code=response.status_code,
                 html=response.text,
             )
 

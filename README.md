@@ -15,7 +15,7 @@ Practical PoC for extracting product names from furniture store pages. The solut
 - `app/classifiers.py` labels the page as `product_page`, `listing_page`, or `non_product_page`
 - `app/cleaners.py` normalizes strings, removes duplicates, and filters noise
 - `app/extractor.py` combines all sources, ranks candidates, and returns the final API response
-- `templates/index.html` and `static/` provide a simple single-page UI
+- `templates/index.html`, `templates/style.css`, and `templates/script.js` provide the UI
 
 ## Extraction pipeline
 
@@ -79,6 +79,57 @@ If you want a different port:
 ```bash
 PORT=8010 python run.py
 ```
+
+## Deploy on Render with GitHub
+
+This project is ready for a Render web service deployment.
+
+Files used for deploy:
+
+- `.python-version` sets the Python version for Render
+- `render.yaml` describes the web service settings
+
+Start command used on Render:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+### 1. Push the project to GitHub
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin <YOUR_GITHUB_REPO_URL>
+git push -u origin main
+```
+
+### 2. Create the service on Render
+
+1. Open Render Dashboard.
+2. Click `New +`.
+3. Choose `Blueprint` if you want Render to read `render.yaml`, or choose `Web Service` and connect the repo manually.
+4. Connect your GitHub account and select the repository.
+5. Confirm these settings:
+
+- Runtime: `Python`
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Instance Type: `Free`
+
+### 3. After deploy
+
+- Render will give you a public `onrender.com` URL
+- open `/health` to check the backend
+- open `/` to use the UI
+
+### Notes about the free plan
+
+- Free web services can spin down after inactivity
+- the first request after idle can take about a minute
+- free hosting is good for a test task or demo, not production
 
 ## Testing
 

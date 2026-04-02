@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl
 
 
 PageType = Literal["product_page", "listing_page", "non_product_page", "unknown"]
@@ -11,12 +11,6 @@ StatusType = Literal["ok", "error"]
 
 class ExtractRequest(BaseModel):
     url: HttpUrl
-
-
-class ProductCandidate(BaseModel):
-    name: str
-    score: int = Field(ge=0)
-    sources: list[str] = Field(default_factory=list)
 
 
 class ExtractResponse(BaseModel):
@@ -48,15 +42,4 @@ class ParsedPage(BaseModel):
 class FetchResult(BaseModel):
     url: str
     final_url: str
-    status_code: int
     html: str
-
-
-class UrlBatch(BaseModel):
-    urls: list[str]
-
-    @field_validator("urls")
-    @classmethod
-    def validate_urls(cls, value: list[str]) -> list[str]:
-        return [item.strip() for item in value if item.strip()]
-
