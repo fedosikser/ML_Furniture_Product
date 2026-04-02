@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Furniture Product Extractor</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">FastAPI PoC</p>
+        <h1>Extract furniture product names from any store URL</h1>
+        <p class="subtitle">
+          Paste a product or catalog link and inspect detected page type, product
+          candidates, and the most reliable product title.
+        </p>
+      </section>
+
+      <section class="panel">
+        <form id="extract-form" class="form">
+          <label for="url">Store page URL</label>
+          <div class="input-row">
+            <input
+              id="url"
+              name="url"
+              type="url"
+              placeholder="https://example.com/products/oak-dining-table"
+              required
+            />
+            <button type="submit">Extract</button>
+          </div>
+        </form>
+
+        <div id="status" class="status muted">Ready for extraction.</div>
+
+        <section id="result" class="result hidden">
+          <div class="summary-grid">
+            <article class="card">
+              <span class="label">Status</span>
+              <strong id="result-status">-</strong>
+            </article>
+            <article class="card">
+              <span class="label">Page Type</span>
+              <strong id="result-page-type">-</strong>
+            </article>
+            <article class="card">
+              <span class="label">Top Product</span>
+              <strong id="result-top-product">-</strong>
+            </article>
+            <article class="card">
+              <span class="label">Processing</span>
+              <strong id="result-processing">-</strong>
+            </article>
+          </div>
+
+          <div class="details-grid">
+            <article class="detail-card">
+              <h2>Detected Products</h2>
+              <ul id="result-products" class="token-list"></ul>
+            </article>
+            <article class="detail-card">
+              <h2>Sources</h2>
+              <ul id="result-sources" class="token-list"></ul>
+            </article>
+          </div>
+
+          <article class="detail-card">
+            <h2>Response Message</h2>
+            <p id="result-message" class="message"></p>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
