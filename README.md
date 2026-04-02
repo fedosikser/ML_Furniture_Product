@@ -104,43 +104,43 @@ Pipeline устроен следующим образом:
 
 Код разбит на модули так, чтобы каждая часть pipeline имела понятную ответственность.
 
-- `[app/main.py](/Users/dmitrijkuznecov/Documents/ml_test/app/main.py)`  
+- [`app/main.py`](app/main.py)  
   FastAPI-приложение, маршруты, точка входа для UI и API.
 
-- `[app/parser.py](/Users/dmitrijkuznecov/Documents/ml_test/app/parser.py)`  
+- [`app/parser.py`](app/parser.py)  
   Загрузка страниц и извлечение структурированных HTML-сигналов.
 
-- `[app/classifiers.py](/Users/dmitrijkuznecov/Documents/ml_test/app/classifiers.py)`  
+- [`app/classifiers.py`](app/classifiers.py)  
   Определение типа страницы: товарная, листинг или нерелевантная.
 
-- `[app/cleaners.py](/Users/dmitrijkuznecov/Documents/ml_test/app/cleaners.py)`  
+- [`app/cleaners.py`](app/cleaners.py)  
   Очистка строк, нормализация, удаление дублей и шума.
 
-- `[app/extractor.py](/Users/dmitrijkuznecov/Documents/ml_test/app/extractor.py)`  
+- [`app/extractor.py`](app/extractor.py)  
   Главный pipeline, который связывает parsing, cleaning, classification и ranking.
 
-- `[app/schemas.py](/Users/dmitrijkuznecov/Documents/ml_test/app/schemas.py)`  
+- [`app/schemas.py`](app/schemas.py)  
   Модели запросов, ответов и промежуточных данных.
 
-- `[app/utils.py](/Users/dmitrijkuznecov/Documents/ml_test/app/utils.py)`  
+- [`app/utils.py`](app/utils.py)  
   Вспомогательные функции.
 
-- `[templates/index.html](/Users/dmitrijkuznecov/Documents/ml_test/templates/index.html)`  
+- [`templates/index.html`](templates/index.html)  
   Одностраничный интерфейс.
 
-- `[templates/style.css](/Users/dmitrijkuznecov/Documents/ml_test/templates/style.css)`  
+- [`templates/style.css`](templates/style.css)  
   Стили интерфейса.
 
-- `[templates/script.js](/Users/dmitrijkuznecov/Documents/ml_test/templates/script.js)`  
+- [`templates/script.js`](templates/script.js)  
   Клиентская логика отправки запроса и отображения результата.
 
-- `[tests/test_cleaners.py](/Users/dmitrijkuznecov/Documents/ml_test/tests/test_cleaners.py)`  
+- [`tests/test_cleaners.py`](tests/test_cleaners.py)  
   Тесты для очистки и нормализации текста.
 
-- `[tests/test_classifiers.py](/Users/dmitrijkuznecov/Documents/ml_test/tests/test_classifiers.py)`  
+- [`tests/test_classifiers.py`](tests/test_classifiers.py)  
   Тесты для классификации страниц.
 
-- `[tests/test_extractor.py](/Users/dmitrijkuznecov/Documents/ml_test/tests/test_extractor.py)`  
+- [`tests/test_extractor.py`](tests/test_extractor.py)  
   Сквозные проверки извлечения на подготовленных HTML-примерах.
 
 ## Веб-интерфейс
@@ -255,8 +255,8 @@ https://ml-furniture-product.onrender.com/
 
 Файлы, связанные с деплоем:
 
-- `[render.yaml](/Users/dmitrijkuznecov/Documents/ml_test/render.yaml)`
-- `[.python-version](/Users/dmitrijkuznecov/Documents/ml_test/.python-version)`
+- [`render.yaml`](render.yaml)
+- [`.python-version`](.python-version)
 
 ## Ограничения
 
