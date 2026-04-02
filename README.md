@@ -1,42 +1,169 @@
 # Furniture Product Extractor
 
-Practical PoC for extracting product names from furniture store pages. The solution uses a hybrid strategy: parse strong HTML signals first, then rank cleaned candidates instead of training a full NER model from scratch.
+Одностраничное веб-приложение для извлечения названий товаров со страниц мебельных магазинов.
 
-## Why this approach
+Проект выполнен как Proof of Concept для задачи обработки списка URL мебельных сайтов, где часть страниц содержит корректную информацию о товарах, часть является категориями или листингами, а часть может быть битой или нерелевантной. Итоговый результат представляет собой небольшой веб-сервис, в который пользователь вставляет ссылку и получает список найденных названий товаров, тип страницы и наиболее вероятный основной товар.
 
-- Faster to implement and explain for an internship test task
-- More stable on real e-commerce pages with limited labeled data
-- Easy to extend later with Playwright or NLP post-processing
+Демо: https://ml-furniture-product.onrender.com/
 
-## Architecture
+## Цель проекта
 
-- `app/main.py` exposes the FastAPI app and routes
-- `app/parser.py` fetches pages and extracts structured HTML signals
-- `app/classifiers.py` labels the page as `product_page`, `listing_page`, or `non_product_page`
-- `app/cleaners.py` normalizes strings, removes duplicates, and filters noise
-- `app/extractor.py` combines all sources, ranks candidates, and returns the final API response
-- `templates/index.html`, `templates/style.css`, and `templates/script.js` provide the UI
+Цель проекта — построить практичное и понятное решение для извлечения информации о товарах с мебельных сайтов.
 
-## Extraction pipeline
+Вместо того чтобы сразу обучать полноценную NER-модель с нуля, в проекте был выбран HTML-first подход:
 
-1. Validate the input URL.
-2. Fetch HTML with `httpx`.
-3. Parse `title`, `h1`, `og:title`, `JSON-LD Product.name`, breadcrumbs, and likely product-card titles.
-4. Clean and deduplicate candidate names.
-5. Classify the page using lightweight heuristics.
-6. Rank candidates using source priority:
-   - `json_ld`
+- собрать сильные сигналы из структуры страницы
+- очистить и отфильтровать шумные кандидаты
+- определить тип страницы
+- ранжировать найденные названия
+- вернуть результат через веб-интерфейс и API
+
+Такой подход был выбран потому, что на e-commerce сайтах названия товаров очень часто уже находятся в структурированных элементах страницы: `h1`, `title`, `og:title`, `JSON-LD`.
+
+## Почему был выбран именно такой подход
+
+В исходном задании в качестве рекомендуемого решения предлагалось обучение NER-модели для сущности `PRODUCT`. Это действительно разумный вариант, но для PoC при ограниченном времени и отсутствии готового размеченного датасета более практичным оказался HTML-first baseline.
+
+Причины выбора:
+
+- названия товаров на интернет-магазинах часто уже лежат в понятной HTML-структуре
+- такое решение быстрее реализовать и проще отлаживать
+- его легче объяснить и показать как рабочий PoC
+- оно даёт сильный baseline, который потом можно расширить ML-компонентом
+
+То есть текущий проект стоит воспринимать как устойчивую и объяснимую базовую систему извлечения, а не как отказ от ML. Следующим этапом в неё можно добавить ML для reranking кандидатов или NER для более сложных страниц.
+
+## Как работает решение
+
+Pipeline устроен следующим образом:
+
+1. Пользователь отправляет URL через веб-страницу.
+2. Backend проверяет корректность URL.
+3. HTML страницы загружается через `httpx`.
+4. Парсер извлекает кандидатов на название товара из:
    - `h1`
-   - `og_title`
    - `title`
-   - `product_cards`
-   - `breadcrumbs`
-   - `body`
+   - `meta[property="og:title"]`
+   - `JSON-LD Product.name`
+   - карточек товаров на listing pages
+   - breadcrumbs и body text как слабых fallback-источников
+5. Кандидаты очищаются и нормализуются.
+6. Страница классифицируется как:
+   - `product_page`
+   - `listing_page`
+   - `non_product_page`
+7. Кандидаты ранжируются по приоритету источников и простым эвристикам.
+8. API возвращает:
+   - статус
+   - тип страницы
+   - список найденных товаров
+   - основной товар
+   - источники, из которых он был получен
+
+## Основные проектные решения
+
+### 1. Извлечение на основе HTML-структуры
+
+Это ключевая идея проекта. Сначала используются самые сильные структурные сигналы страницы, и только потом подключаются более слабые текстовые кандидаты.
+
+Приоритет источников:
+
+1. `JSON-LD Product.name`
+2. `h1`
+3. `og:title`
+4. `title`
+5. product cards
+6. breadcrumbs
+7. body text
+
+### 2. Простая классификация страниц
+
+Система не считает каждую страницу товарной. Сначала она оценивает тип страницы по нескольким признакам:
+
+- количество product cards
+- наличие текста, похожего на цену
+- наличие `Add to cart`
+- наличие `SKU`
+- наличие одного главного `h1`
+
+Это делает результат более чистым и интерпретируемым.
+
+### 3. Фильтрация шума
+
+На реальных сайтах много лишнего текста из меню, хедера, футера и маркетинговых блоков.  
+Поэтому в проекте добавлена фильтрация шума:
+
+- нормализация строк
+- удаление дублей
+- фильтрация стоп-слов
+- игнорирование кандидатов из навигационных контейнеров
+
+Это особенно важно для случаев, когда в `h1` или в крупных заголовках попадаются фразы вроде `Trade Program`, которые не являются названием товара.
+
+## Архитектура проекта
+
+Код разбит на модули так, чтобы каждая часть pipeline имела понятную ответственность.
+
+- `[app/main.py](/Users/dmitrijkuznecov/Documents/ml_test/app/main.py)`  
+  FastAPI-приложение, маршруты, точка входа для UI и API.
+
+- `[app/parser.py](/Users/dmitrijkuznecov/Documents/ml_test/app/parser.py)`  
+  Загрузка страниц и извлечение структурированных HTML-сигналов.
+
+- `[app/classifiers.py](/Users/dmitrijkuznecov/Documents/ml_test/app/classifiers.py)`  
+  Определение типа страницы: товарная, листинг или нерелевантная.
+
+- `[app/cleaners.py](/Users/dmitrijkuznecov/Documents/ml_test/app/cleaners.py)`  
+  Очистка строк, нормализация, удаление дублей и шума.
+
+- `[app/extractor.py](/Users/dmitrijkuznecov/Documents/ml_test/app/extractor.py)`  
+  Главный pipeline, который связывает parsing, cleaning, classification и ranking.
+
+- `[app/schemas.py](/Users/dmitrijkuznecov/Documents/ml_test/app/schemas.py)`  
+  Модели запросов, ответов и промежуточных данных.
+
+- `[app/utils.py](/Users/dmitrijkuznecov/Documents/ml_test/app/utils.py)`  
+  Вспомогательные функции.
+
+- `[templates/index.html](/Users/dmitrijkuznecov/Documents/ml_test/templates/index.html)`  
+  Одностраничный интерфейс.
+
+- `[templates/style.css](/Users/dmitrijkuznecov/Documents/ml_test/templates/style.css)`  
+  Стили интерфейса.
+
+- `[templates/script.js](/Users/dmitrijkuznecov/Documents/ml_test/templates/script.js)`  
+  Клиентская логика отправки запроса и отображения результата.
+
+- `[tests/test_cleaners.py](/Users/dmitrijkuznecov/Documents/ml_test/tests/test_cleaners.py)`  
+  Тесты для очистки и нормализации текста.
+
+- `[tests/test_classifiers.py](/Users/dmitrijkuznecov/Documents/ml_test/tests/test_classifiers.py)`  
+  Тесты для классификации страниц.
+
+- `[tests/test_extractor.py](/Users/dmitrijkuznecov/Documents/ml_test/tests/test_extractor.py)`  
+  Сквозные проверки извлечения на подготовленных HTML-примерах.
+
+## Веб-интерфейс
+
+Приложение предоставляет простой single-page интерфейс, где пользователь может:
+
+- вставить URL
+- запустить извлечение
+- увидеть тип страницы
+- посмотреть список найденных товаров
+- увидеть наиболее вероятный основной товар
+
+Интерфейс сделан намеренно простым, потому что основной акцент проекта находится в extraction pipeline, а не в сложном фронтенде.
 
 ## API
 
-- `GET /` renders the UI
-- `POST /extract` accepts:
+### `GET /`
+
+Возвращает веб-интерфейс.
+
+### `POST /extract`
+
+Принимает:
 
 ```json
 {
@@ -44,9 +171,7 @@ Practical PoC for extracting product names from furniture store pages. The solut
 }
 ```
 
-- `GET /health` returns service status
-
-Example response:
+Возвращает:
 
 ```json
 {
@@ -63,7 +188,44 @@ Example response:
 }
 ```
 
-## Running locally
+### `GET /health`
+
+Простой endpoint для проверки доступности сервиса.
+
+## Обработка ошибок
+
+В проекте отдельно учтены наиболее частые проблемные сценарии:
+
+- невалидный URL
+- timeout при загрузке страницы
+- ответ не в формате HTML
+- битая страница или HTTP-ошибка
+- валидная страница, на которой не найдено подходящих кандидатов
+
+Это важно, потому что входной список ссылок по условию задачи может содержать нерабочие и нерелевантные URL.
+
+## Тестирование
+
+В проекте есть небольшой набор автоматических тестов для ключевой логики:
+
+- очистка текста
+- классификация страниц
+- извлечение на product и listing примерах
+- regression-check для шумных заголовков вроде `Trade Program`
+
+Текущее состояние:
+
+- `7` тестов проходят успешно
+
+Запуск тестов:
+
+```bash
+./.venv/bin/python -m pytest
+```
+
+## Локальный запуск
+
+Минимальный запуск проекта:
 
 ```bash
 python3 -m venv .venv
@@ -72,74 +234,63 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Then open `http://127.0.0.1:8001`.
+После запуска приложение доступно по адресу:
 
-If you want a different port:
+```text
+http://127.0.0.1:8001
+```
+
+При необходимости можно указать другой порт:
 
 ```bash
 PORT=8010 python run.py
 ```
 
-## Deploy on Render with GitHub
+## Деплой
 
-This project is ready for a Render web service deployment.
+Проект подготовлен для бесплатного деплоя на Render.  
+Публичная версия доступна по адресу:
 
-Files used for deploy:
+https://ml-furniture-product.onrender.com/
 
-- `.python-version` sets the Python version for Render
-- `render.yaml` describes the web service settings
+Файлы, связанные с деплоем:
 
-Start command used on Render:
+- `[render.yaml](/Users/dmitrijkuznecov/Documents/ml_test/render.yaml)`
+- `[.python-version](/Users/dmitrijkuznecov/Documents/ml_test/.python-version)`
 
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
+## Ограничения
 
-### 1. Push the project to GitHub
+Так как это PoC, у решения есть ожидаемые ограничения:
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin <YOUR_GITHUB_REPO_URL>
-git push -u origin main
-```
+- JS-heavy сайты могут потребовать Playwright fallback
+- на нестандартных сайтах качество извлечения может снижаться
+- branded page titles иногда могут влиять на ranking
+- listing pages у разных магазинов сильно отличаются по структуре
+- пока не собран полноценный evaluation report по всему датасету
 
-### 2. Create the service on Render
+## Как в проект можно добавить ML
 
-1. Open Render Dashboard.
-2. Click `New +`.
-3. Choose `Blueprint` if you want Render to read `render.yaml`, or choose `Web Service` and connect the repo manually.
-4. Connect your GitHub account and select the repository.
-5. Confirm these settings:
+Хотя текущая версия основана на HTML-first логике, она хорошо расширяется.
 
-- Runtime: `Python`
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- Instance Type: `Free`
+Два реалистичных следующих шага:
 
-### 3. After deploy
+- добавить ML-reranker для оценки найденных кандидатов и улучшения `top_product`
+- обучить лёгкую NER-модель на размеченном тексте страниц для более сложных случаев
 
-- Render will give you a public `onrender.com` URL
-- open `/health` to check the backend
-- open `/` to use the UI
+Таким образом, текущую систему можно рассматривать как сильный baseline для дальнейшего гибридного решения.
 
-### Notes about the free plan
+## Итог
 
-- Free web services can spin down after inactivity
-- the first request after idle can take about a minute
-- free hosting is good for a test task or demo, not production
+Проект представляет собой законченное end-to-end PoC решение:
 
-## Testing
+- рабочий FastAPI backend
+- single-page website
+- модульный extraction pipeline
+- классификация страниц
+- фильтрация шума
+- ранжирование кандидатов
+- обработка ошибок
+- тесты
+- бесплатный деплой
 
-```bash
-pytest
-```
-
-## Limitations
-
-- JS-heavy storefronts may require a Playwright fallback
-- Heuristics can pick category labels or branded page titles on unusual sites
-- Listing pages vary a lot across stores, so extraction quality is best-effort
-- This project is aimed at a clear PoC, not large-scale production crawling
+Главная сильная сторона проекта — не попытка усложнить решение ради формального ML, а создание устойчивого и объяснимого baseline, который уже работает на реальных мебельных страницах и при этом может быть расширен ML-компонентами на следующем этапе.
